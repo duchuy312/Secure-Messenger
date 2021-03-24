@@ -88,18 +88,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 14,
     color: Colors.black,
+    fontFamily: 'kindandrich',
   },
   sectionDescription: {
     marginTop: 8,
     fontSize: 18,
     fontWeight: '400',
     color: Colors.dark,
+    fontFamily: 'kindandrich',
   },
   highlight: {
-    fontWeight: '700',
+    fontFamily: 'kindandrich',
   },
   footer: {
     color: Colors.dark,
