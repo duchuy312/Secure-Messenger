@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // @refresh state
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,22 +13,24 @@ import {
 } from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
-import {GiftedChat, InputToolbar} from 'react-native-gifted-chat';
-import firebaseSDK from '../../config/firebaseSDK';
 import firestore from '@react-native-firebase/firestore';
 import Separator from '../component/Separator';
+import auth from '@react-native-firebase/auth';
 
 const ChatRoom = () => {
   const [messages, setMessages] = useState([]);
   const route = useRoute();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const user = auth().currentUser.toJSON();
+  console.log(user);
   const navigation = useNavigation();
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('MESSAGE_THREADS')
-      .where('roomof', '==', route.params.id)
+      .where('members', 'array-contains', user.uid)
       .onSnapshot((querySnapshot) => {
+        console.log(querySnapshot);
         const threads = querySnapshot.docs.map((documentSnapshot) => {
           return {
             _id: documentSnapshot.id,

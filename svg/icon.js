@@ -54,9 +54,9 @@ export function SearchIcon(props) {
 export function CancelIcon(props) {
   return (
     <Svg
-      height={20}
+      height={30}
       viewBox="0 0 515.558 515.558"
-      width={20}
+      width={30}
       xmlns="http://www.w3.org/2000/svg"
       {...props}>
       <Path

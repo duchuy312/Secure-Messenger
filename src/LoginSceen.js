@@ -34,7 +34,7 @@ const LoginScreen = () => {
       await storeUser(emailuser, password);
       await firebase.auth().signInWithEmailAndPassword(emailuser, password);
       firebase.auth().onAuthStateChanged((user) => {
-        console.log(user);
+        console.log('Login');
       });
       navigation.navigate('MainStack');
     } catch (error) {

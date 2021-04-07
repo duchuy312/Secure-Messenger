@@ -342,9 +342,8 @@ const styles = StyleSheet.create({
     borderColor: 'white',
   },
   inputText: {
-    fontSize: scale(50),
+    fontSize: scale(14),
     color: 'black',
-    fontFamily: 'kindandrich',
   },
   InforContainer: {
     width: '90%',
