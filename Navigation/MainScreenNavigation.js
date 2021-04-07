@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  TextInput,
 } from 'react-native';
 import {scale} from 'react-native-size-matters';
 import TopScreen from './ScreenNavigation';
@@ -17,11 +18,50 @@ import ChatRoom from '../src/screen/ChatRoom';
 import ProfileScreen from '../src/screen/ProfileScreen';
 import EditProfileScreen from '../src/screen/EditProfileScreen';
 import LoginScreen from '../src/LoginSceen';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import CryptoJS from 'react-native-crypto-js';
+
 const Stack = createStackNavigator();
 
 function MainStack() {
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible1, setModalVisible1] = useState(false);
   const navigation = useNavigation();
+  const [roomName, setRoomName] = useState('');
+  const user = auth().currentUser.toJSON();
+  function createChatRoom() {
+    if (roomName.length > 0) {
+      // create new thread using firebase & firestore
+      firestore()
+        .collection('MESSAGE_THREADS')
+        .add({
+          roomof: user.uid,
+          name: roomName,
+          latestMessage: {
+            text: CryptoJS.AES.encrypt(
+              `${roomName} created. Welcome!`,
+              '1998',
+            ).toString(),
+            createdAt: new Date().getTime(),
+          },
+          members: [user.uid],
+          avatar: [user.photoURL],
+          chatImg: '',
+        })
+        .then((docRef) => {
+          docRef.collection('MESSAGES').add({
+            text: CryptoJS.AES.encrypt(
+              `${roomName} created. Welcome!`,
+              '1998',
+            ).toString(),
+            createdAt: new Date().getTime(),
+            system: true,
+          });
+          console.log('Room create');
+        });
+    }
+  }
   function LogoTitle() {
     return (
       <View style={styles.topLeft}>
@@ -61,7 +101,7 @@ function MainStack() {
             setModalVisible(false);
           }}>
           <View style={styles.smallModalView}>
-            <View style={styles.modalIcon}>
+            <View style={styles.modalOption}>
               <TouchableOpacity
                 style={styles.modalItem}
                 onPress={() => {
@@ -77,9 +117,58 @@ function MainStack() {
                 }}>
                 <Text>Setting</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalItem}
+                onPress={() => {
+                  setModalVisible1(true);
+                  setModalVisible(false);
+                }}>
+                <Text>Create Chat Room</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
+      </Modal>
+    );
+  }
+  function ModalCreateRoom() {
+    return (
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible1}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+        }}>
+        <View style={styles.CenteredView}>
+          <View style={styles.ContainerBot}>
+            <View style={styles.modalIcon}>
+              <TouchableOpacity
+                onPress={() => {
+                  setModalVisible1(false);
+                }}>
+                <CancelIcon />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.TextInputCenter}>
+              <View style={styles.textInputArea}>
+                <TextInput
+                  value={roomName}
+                  onChangeText={(input) => setRoomName(input)}
+                  style={styles.textInput}
+                  placeholder={'Nhập tên phòng'}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => {
+                  createChatRoom();
+                }}>
+                <Text>Create Chat Room</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     );
   }
@@ -111,6 +200,7 @@ function MainStack() {
                 }}>
                 <MoreIcon />
                 <ModalView />
+                <ModalCreateRoom />
               </TouchableOpacity>
             </View>
           ),
@@ -134,6 +224,7 @@ function MainStack() {
                 <MoreIcon />
               </TouchableOpacity>
               <ModalView />
+              <ModalCreateRoom />
             </View>
           ),
         }}
@@ -156,6 +247,7 @@ function MainStack() {
                 <MoreIcon />
               </TouchableOpacity>
               <ModalView />
+              <ModalCreateRoom />
             </View>
           ),
         }}
@@ -221,7 +313,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   smallModalView: {
-    height: scale(50),
+    height: scale(70),
     width: scale(150),
     backgroundColor: 'white',
     borderRadius: scale(5),
@@ -236,11 +328,61 @@ const styles = StyleSheet.create({
     color: 'black',
     fontSize: scale(15),
   },
-  modalIcon: {
-    height: scale(50),
+  modalOption: {
+    height: scale(70),
     justifyContent: 'space-around',
   },
   modalItem: {
     backgroundColor: '#f0f0f0',
+  },
+  ContainerBot: {
+    height: scale(300),
+    width: scale(300),
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: scale(10),
+    elevation: scale(2),
+  },
+  CenteredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(100,100,100, 0.5)',
+  },
+  textInputArea: {
+    backgroundColor: '#F6F4F5',
+    width: scale(290),
+    height: scale(50),
+    alignSelf: 'center',
+    borderRadius: scale(25),
+    marginBottom: scale(20),
+  },
+  TextInputCenter: {
+    marginTop: scale(60),
+  },
+  textInput: {
+    width: scale(290),
+    height: scale(50),
+    alignSelf: 'center',
+    fontSize: scale(18),
+    marginLeft: scale(30),
+  },
+  button: {
+    backgroundColor: 'rgba(188, 45, 188, 1)',
+    width: scale(200),
+    height: scale(50),
+    alignSelf: 'center',
+    borderRadius: scale(25),
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: scale(10),
+  },
+  modalIcon: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    height: scale(40),
+    width: '95%',
+    backgroundColor: 'white',
+    alignItems: 'center',
   },
 });

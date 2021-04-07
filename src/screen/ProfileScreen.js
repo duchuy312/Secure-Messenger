@@ -171,9 +171,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   text: {
-    fontSize: scale(60),
+    fontSize: scale(20),
     color: 'black',
-    fontFamily: 'kindandrich',
   },
   bigAvatar: {
     height: scale(180),

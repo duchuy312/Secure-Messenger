@@ -31,10 +31,11 @@ const CoverScreen = () => {
       </View>
       <View style={styles.ContainerBot}>
         <TouchableOpacity
+          style={styles.button}
           onPress={() => {
             navigation.navigate('LoginScreen');
           }}>
-          <Text>Next page</Text>
+          <Text style={styles.buttonText}>Next page</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -77,5 +78,19 @@ const styles = StyleSheet.create({
     fontSize: scale(80),
     color: 'white',
     fontFamily: 'kindandrich',
+  },
+  button: {
+    backgroundColor: 'rgba(188, 45, 188, 1)',
+    width: scale(200),
+    height: scale(50),
+    alignSelf: 'center',
+    borderRadius: scale(25),
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: scale(10),
+  },
+  buttonText: {
+    fontSize: scale(18),
+    color: 'white',
   },
 });

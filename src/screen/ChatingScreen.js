@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // @refresh state
 import React, {useState, useCallback, useEffect} from 'react';
 import {
@@ -22,31 +23,17 @@ import {
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import AvatarDefault from '../../assets/image/default-ava.png';
+import CryptoJS from 'react-native-crypto-js';
+
 const ChatingScreen = () => {
   const [messages, setMessages] = useState([]);
   const route = useRoute();
   const [thread, setThread] = useState(route.params.thread);
   const user = auth().currentUser.toJSON();
-  // useEffect(() => {
-  //   setMessages([
-  //     {
-  //       _id: 1,
-  //       text: 'Hello developer',
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: 2,
-  //         name: 'React Native',
-  //         avatar: 'https://placeimg.com/140/140/any',
-  //       },
-  //     },
-  //   ]);
-  // }, []);
-
   async function handleSend(messages) {
-    const text = messages[0].text;
-
+    const text = CryptoJS.AES.encrypt(messages[0].text, '1998').toString();
     firestore()
-      .collection('THREADS')
+      .collection('MESSAGE_THREADS')
       .doc(thread._id)
       .collection('MESSAGES')
       .add({
@@ -61,9 +48,8 @@ const ChatingScreen = () => {
               : user.photoURL,
         },
       });
-
     await firestore()
-      .collection('THREADS')
+      .collection('MESSAGE_THREADS')
       .doc(thread._id)
       .set(
         {
@@ -78,13 +64,12 @@ const ChatingScreen = () => {
   const navigation = useNavigation();
   useEffect(() => {
     const messagesListener = firestore()
-      .collection('THREADS')
+      .collection('MESSAGE_THREADS')
       .doc(thread._id)
       .collection('MESSAGES')
       .orderBy('createdAt', 'desc')
       .onSnapshot((querySnapshot) => {
-        const messages = querySnapshot.docs.map((doc) => {
-          console.log(doc);
+        const datamessages = querySnapshot.docs.map((doc) => {
           const firebaseData = doc.data();
           const data = {
             _id: doc.id,
@@ -92,7 +77,6 @@ const ChatingScreen = () => {
             createdAt: new Date().getTime(),
             ...firebaseData,
           };
-
           if (!firebaseData.system) {
             data.user = {
               ...firebaseData.user,
@@ -102,14 +86,17 @@ const ChatingScreen = () => {
 
           return data;
         });
-
-        setMessages(messages);
+        for (let i = 0; i < datamessages.length; i++) {
+          datamessages[i].text = CryptoJS.AES.decrypt(
+            datamessages[i].text,
+            '1998',
+          ).toString(CryptoJS.enc.Utf8);
+        }
+        setMessages(datamessages);
       });
-
     // Stop listening for updates whenever the component unmounts
     return () => messagesListener();
   }, []);
-
   const customtInputToolbar = (props) => {
     return (
       <InputToolbar
@@ -124,19 +111,6 @@ const ChatingScreen = () => {
       />
     );
   };
-  //   return (
-  //     <View style={styles.Container}>
-  //       <GiftedChat
-  //         messages={messages}
-  //         onSend={(messages) => handleSend(messages)}
-  //         user={{
-  //           _id: 1,
-  //         }}
-  //         renderInputToolbar={(props) => customtInputToolbar(props)}
-  //       />
-  //     </View>
-  //   );
-  // };
   function renderBubble(props) {
     let username = props.currentMessage.user.name;
     let color = getColor(username);

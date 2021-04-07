@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -7,6 +8,8 @@ import {
   Image,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
@@ -14,83 +17,100 @@ import {GiftedChat} from 'react-native-gifted-chat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-
+import Separator from '../component/Separator';
+import CryptoJS from 'react-native-crypto-js';
 const ChatScreen = () => {
   const navigation = useNavigation();
-  const [email, setEmail] = useState();
-  const [pass, setPass] = useState();
   const [roomName, setRoomName] = useState('');
   const user = auth().currentUser.toJSON();
-  function createChatRoom() {
-    if (roomName.length > 0) {
-      // create new thread using firebase & firestore
-      firestore()
-        .collection('MESSAGE_THREADS')
-        .add({
-          roomof: user.uid,
-          name: roomName,
-          latestMessage: {
-            text: `${roomName} created. Welcome!`,
-            createdAt: new Date().getTime(),
-          },
-        })
-        .then((docRef) => {
-          docRef.collection('MESSAGES').add({
-            text: `${roomName} created. Welcome!`,
-            createdAt: new Date().getTime(),
-            system: true,
-          });
-          navigation.navigate('ChatRoom', {id: user.uid});
-        });
-    }
-  }
-  const getUser = async () => {
-    try {
-      const UserMail = await AsyncStorage.getItem('@Email');
-      const UserPass = await AsyncStorage.getItem('@Pass');
-      if (UserMail !== null) {
-        console.log('We have Token');
-        setEmail(UserMail);
-        setPass(UserPass);
-      } else {
-        console.log('Dont have Token');
-      }
-    } catch (err) {
-      console.log('Read data error');
-    }
-  };
+  const [threads, setThreads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ChatAvatar, setChatAvatar] = useState([]);
+  const [ChatName, setChatName] = useState([]);
   useEffect(() => {
-    getUser();
-  }, []);
+    firestore()
+      .collection('MESSAGE_THREADS')
+      .where('members', 'array-contains', user.uid)
+      .onSnapshot((querySnapshot) => {
+        const datathreads = querySnapshot.docs.map((documentSnapshot) => {
+          return {
+            _id: documentSnapshot.id,
+            name: '',
+            latestMessage: {text: ''},
+            ...documentSnapshot.data(),
+          };
+        });
+        for (let i = 0; i < datathreads.length; i++) {
+          datathreads[i].latestMessage.text = CryptoJS.AES.decrypt(
+            datathreads[i].latestMessage.text,
+            '1998',
+          ).toString(CryptoJS.enc.Utf8);
+        }
+        setThreads(datathreads);
+        if (loading) {
+          setLoading(false);
+        }
+      });
+    checkAvatar();
+  }, [threads.length]);
+  function checkAvatar() {
+    var arr = [];
+    var arr1 = [];
+    for (let i = 0; i < threads.length; i++) {
+      if (threads[i].avatar.length === 2) {
+        for (let j = 0; j < threads[i].avatar.length; j++) {
+          if (threads[i].avatar[j] !== user.photoURL) {
+            arr[i] = threads[i].avatar[j];
+          }
+        }
+      }
+    }
+    setChatAvatar(arr);
+  }
+  if (loading) {
+    return <ActivityIndicator size="large" color="#555" />;
+  }
   return (
     <View style={styles.Container}>
-      <View style={styles.ContainerTop}>
-        <Text style={styles.text}>ChatScreen</Text>
-      </View>
       <View style={styles.ContainerCenter}>
-        <View style={styles.textInputArea}>
-          <TextInput
-            value={roomName}
-            onChangeText={(input) => setRoomName(input)}
-            style={styles.textInput}
-            placeholder={'Nhập tên phòng'}
-          />
-        </View>
+        <FlatList
+          data={threads}
+          keyExtractor={(item, index) => item._id}
+          renderItem={({item, index}) => (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('ChatingScreen', {thread: item})
+              }>
+              <View style={styles.row}>
+                <View style={styles.AvatarUserContainer}>
+                  <View style={styles.circle}>
+                    <Image
+                      style={styles.AvatarUser}
+                      source={{
+                        uri: ChatAvatar[index],
+                      }}
+                    />
+                  </View>
+                </View>
+                <View style={styles.content}>
+                  <View style={styles.header}>
+                    {item.name !== user.displayName ? (
+                      <Text style={styles.nameText}>{item.name}</Text>
+                    ) : (
+                      <Text style={styles.nameText}>{item.starter}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.contentText}>
+                    {item.latestMessage.text.slice(0, 90)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+          ItemSeparatorComponent={() => <Separator />}
+        />
       </View>
-      <View style={styles.ContainerBot}>
-        <TouchableOpacity
-          onPress={() => {
-            createChatRoom();
-          }}>
-          <Text>Create Chat Room</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            navigation.navigate('ChatRoom', {id: user.uid});
-          }}>
-          <Text>Chat Room</Text>
-        </TouchableOpacity>
-      </View>
+      <View style={styles.ContainerBot} />
     </View>
   );
 };
@@ -102,18 +122,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'white',
   },
-  ContainerTop: {
-    height: '20%',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
   ContainerCenter: {
-    height: '60%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
+    height: '80%',
   },
   ContainerBot: {
     height: '20%',
+    width: '100%',
     alignItems: 'center',
   },
   logocontainer: {
@@ -147,5 +162,51 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     fontSize: scale(18),
     marginLeft: scale(30),
+  },
+  row: {
+    paddingRight: 10,
+    paddingLeft: 5,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    height: scale(100),
+    borderBottomWidth: scale(1 / 2),
+  },
+  content: {
+    flexShrink: 1,
+  },
+  header: {
+    flexDirection: 'row',
+  },
+  nameText: {
+    fontWeight: '600',
+    fontSize: 18,
+    color: '#000',
+  },
+  dateText: {},
+  contentText: {
+    color: '#949494',
+    fontSize: 16,
+    marginTop: 2,
+  },
+  AvatarUserContainer: {
+    width: '30%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circle: {
+    height: scale(80),
+    width: scale(80),
+    overflow: 'hidden',
+    borderRadius: scale(40),
+  },
+  AvatarUser: {
+    flex: 1,
+    height: '100%',
+    width: '100%',
+    alignSelf: 'center',
+    resizeMode: 'stretch',
   },
 });
