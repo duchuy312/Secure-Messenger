@@ -86,7 +86,6 @@ const EditProfileScreen = () => {
       },
       includeBase64: true,
     };
-
     ImagePicker.launchImageLibrary(options, (response) => {
       if (response.didCancel) {
         console.log('User cancelled photo picker');
