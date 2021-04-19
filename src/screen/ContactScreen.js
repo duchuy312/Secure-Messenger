@@ -3,28 +3,50 @@ import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
-  ImageBackground,
   StyleSheet,
   Image,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
 import firestore from '@react-native-firebase/firestore';
-import Separator from '../component/Separator';
 import auth from '@react-native-firebase/auth';
 import CryptoJS from 'react-native-crypto-js';
+import {SearchIcon} from '../../svg/icon';
 
 const ContactScreen = () => {
   const navigation = useNavigation();
-  const [check, setCheck] = useState(false);
   const user = auth().currentUser.toJSON();
   const [threads, setThreads] = useState([]);
-  const route = useRoute();
   const [UserList, setUserList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filteredDataSource, setFilteredDataSource] = useState([]);
+  const searchFilterFunction = (text) => {
+    // Check if searched text is not blank
+    if (text) {
+      // Inserted text is not blank
+      // Filter the masterDataSource
+      // Update FilteredDataSource
+      const newData = UserList.filter(function (item) {
+        const itemData = item.fullname
+          ? item.fullname.toUpperCase()
+          : ''.toUpperCase();
+        const textData = text.toUpperCase();
+        return itemData.indexOf(textData) > -1;
+      });
+      setFilteredDataSource(newData);
+      setSearch(text);
+    } else {
+      // Inserted text is blank
+      // Update FilteredDataSource with masterDataSource
+      setFilteredDataSource(UserList);
+      setSearch(text);
+    }
+  };
   function createChat(friend, id, img) {
     firestore()
       .collection('MESSAGE_THREADS')
@@ -33,23 +55,28 @@ const ContactScreen = () => {
         name: friend,
         latestMessage: {
           text: CryptoJS.AES.encrypt(
-            `${friend} created. Welcome!`,
+            `${user.displayName} started a chat`,
             '1998',
           ).toString(),
           createdAt: new Date().getTime(),
+          sender: '',
+          type: '',
         },
         members: [user.uid, id],
         avatar: [user.photoURL, img],
         chatImg: img,
+        type: 'individual',
       })
       .then((docRef) => {
         docRef.collection('MESSAGES').add({
           text: CryptoJS.AES.encrypt(
-            `${friend} created. Welcome!`,
+            `${user.displayName} started a chat`,
             '1998',
           ).toString(),
           createdAt: new Date().getTime(),
           system: true,
+          sender: '',
+          type: '',
         });
         navigation.navigate('Chats', {id: user.uid});
       });
@@ -59,7 +86,7 @@ const ContactScreen = () => {
       .collection('MESSAGE_THREADS')
       .where('members', 'array-contains', user.uid)
       .onSnapshot((querySnapshot) => {
-        const threads = querySnapshot.docs.map((documentSnapshot) => {
+        const DataThreads = querySnapshot.docs.map((documentSnapshot) => {
           return {
             _id: documentSnapshot.id,
             name: '',
@@ -67,7 +94,7 @@ const ContactScreen = () => {
             ...documentSnapshot.data(),
           };
         });
-        setThreads(threads);
+        setThreads(DataThreads);
         if (loading) {
           setLoading(false);
         }
@@ -76,14 +103,15 @@ const ContactScreen = () => {
       .collection('USERS')
       .where('userid', '!=', user.uid)
       .onSnapshot((querySnapshot) => {
-        const threads = querySnapshot.docs.map((documentSnapshot) => {
+        const UserThreads = querySnapshot.docs.map((documentSnapshot) => {
           return {
             owner: user.uid,
             _id: documentSnapshot.id,
             ...documentSnapshot.data(),
           };
         });
-        setUserList(threads);
+        setUserList(UserThreads);
+        setFilteredDataSource(UserThreads);
         if (loading) {
           setLoading(false);
         }
@@ -104,14 +132,17 @@ const ContactScreen = () => {
           threads[i].members.length === 2
         ) {
           count = 0;
-          navigation.navigate('ChatingScreen', {thread: threads[i]});
+          navigation.navigate('ChatingScreen', {
+            thread: threads[i],
+            idroom: threads[i]._id,
+            member: threads[i].members,
+            type: threads[i].type,
+          });
           break;
         } else {
           count = count + 1;
         }
-        console.log(count);
       }
-      console.log(count);
       count !== 0 ? createChat(name, userid, chatImg) : null;
     }
   };
@@ -120,11 +151,25 @@ const ContactScreen = () => {
   }
   return (
     <View style={styles.Container}>
+      <View style={styles.textInputArea}>
+        <TouchableOpacity style={styles.icon}>
+          <SearchIcon />
+        </TouchableOpacity>
+        <TextInput
+          onChangeText={(text) => searchFilterFunction(text)}
+          onClear={(text) => searchFilterFunction('')}
+          value={search}
+          style={styles.textInput}
+          placeholder={'Search'}
+        />
+      </View>
       <FlatList
-        data={UserList}
+        style={{marginTop: scale(12)}}
+        data={filteredDataSource}
         keyExtractor={(item) => item._id}
         renderItem={({item}) => (
           <TouchableOpacity
+            style={styles.rowTouch}
             onPress={() => checkRoom(item.fullname, item.userid, item.userImg)}>
             <View style={styles.row}>
               <View style={styles.AvatarUserContainer}>
@@ -146,7 +191,6 @@ const ContactScreen = () => {
             </View>
           </TouchableOpacity>
         )}
-        ItemSeparatorComponent={() => <Separator />}
       />
     </View>
   );
@@ -156,44 +200,42 @@ export default ContactScreen;
 const styles = StyleSheet.create({
   Container: {
     flex: 1,
+    backgroundColor: '#efefef',
+  },
+  textInputArea: {
+    flexDirection: 'row',
     backgroundColor: 'white',
-  },
-  ContainerTop: {
-    height: '20%',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  ContainerCenter: {
-    height: '60%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ContainerBot: {
-    height: '20%',
-    alignItems: 'center',
-  },
-  logocontainer: {
-    height: scale(160),
-    width: scale(160),
-    alignItems: 'center',
+    width: '96%',
+    height: scale(40),
     alignSelf: 'center',
+    borderRadius: scale(10),
+    marginTop: scale(12),
   },
-  logo: {
-    flex: 1,
-    height: '100%',
-    width: '100%',
-    resizeMode: 'stretch',
+  textInput: {
+    width: '96%',
+    height: scale(40),
+    alignSelf: 'center',
+    fontSize: scale(18),
   },
-  text: {
-    fontSize: scale(80),
-    color: 'black',
-    fontFamily: 'kindandrich',
+  icon: {
+    width: scale(30),
+    justifyContent: 'center',
+    paddingLeft: scale(8),
+  },
+  rowTouch: {
+    width: '96%',
+    height: scale(80),
+    marginHorizontal: '2%',
+    borderRadius: scale(10),
+    marginBottom: scale(12),
   },
   row: {
-    width: '100%',
-    height: scale(100),
-    borderBottomWidth: scale(1 / 2),
+    borderRadius: scale(10),
     flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    height: scale(80),
+    backgroundColor: 'white',
   },
   content: {
     flexShrink: 1,
@@ -220,8 +262,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   circle: {
-    height: scale(80),
-    width: scale(80),
+    height: scale(70),
+    width: scale(70),
     overflow: 'hidden',
     borderRadius: scale(40),
   },

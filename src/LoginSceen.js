@@ -4,41 +4,37 @@ import {
   Text,
   ImageBackground,
   StyleSheet,
-  Image,
   TouchableOpacity,
   TextInput,
   StatusBar,
-  SafeAreaView,
+  Modal,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
-import firebaseSDK from '../config/firebaseSDK';
 import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {XIcon, CheckIcon} from '../svg/icon';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigation = useNavigation();
-  const storeUser = async (EmailStore, PassStore) => {
-    try {
-      await AsyncStorage.setItem('@Email', EmailStore);
-      await AsyncStorage.setItem('@Pass', PassStore);
-    } catch (err) {
-      console.log('Saving error');
-    }
-  };
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible1, setModalVisible1] = useState(false);
   const SignIn = async (emailuser, password) => {
-    try {
-      await storeUser(emailuser, password);
-      await firebase.auth().signInWithEmailAndPassword(emailuser, password);
-      firebase.auth().onAuthStateChanged((user) => {
-        console.log('Login');
-      });
-      navigation.navigate('MainStack');
-    } catch (error) {
-      console.log(error.toString(error));
+    if (emailuser !== '' && password !== '') {
+      try {
+        await firebase.auth().signInWithEmailAndPassword(emailuser, password);
+        firebase.auth().onAuthStateChanged((user) => {
+          console.log(user);
+        });
+        setModalVisible1(true);
+      } catch (error) {
+        setModalVisible(true);
+      }
+    } else {
+      setModalVisible(true);
     }
   };
   const ClearInput = () => {
@@ -92,6 +88,52 @@ const LoginScreen = () => {
         </View>
       </View>
       <View style={styles.ContainerBot} />
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+        }}>
+        <TouchableOpacity
+          style={styles.smallCenteredView}
+          onPress={() => {
+            setModalVisible(false);
+          }}>
+          <View style={styles.smallModalView}>
+            <View style={styles.modalCenter}>
+              <View style={styles.circleX}>
+                <XIcon />
+              </View>
+              <Text style={styles.smallModalText}>
+                Đăng nhập không thành công, vui lòng kiểm tra tên đăng nhập hoặc
+                mật khẩu
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible1}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+        }}>
+        <TouchableOpacity
+          style={styles.smallCenteredView}
+          onPress={() => {
+            navigation.navigate('MainStack');
+            setModalVisible1(false);
+          }}>
+          <View style={styles.smallModalView}>
+            <View style={styles.modalCenter}>
+              <CheckIcon />
+              <Text style={styles.smallModalText}>Đăng nhập thành công</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ImageBackground>
   );
 };
@@ -179,5 +221,40 @@ const styles = StyleSheet.create({
     color: '#2787CD',
     textDecorationLine: 'underline',
     alignSelf: 'center',
+  },
+  smallCenteredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(100,100,100, 0.9)',
+  },
+  smallModalView: {
+    height: scale(300),
+    width: scale(300),
+    backgroundColor: 'white',
+    borderRadius: scale(5),
+    alignItems: 'center',
+    shadowColor: '#000',
+    elevation: scale(5),
+    justifyContent: 'center',
+    padding: scale(8),
+  },
+  smallModalText: {
+    color: 'black',
+    fontSize: scale(15),
+    textAlign: 'center',
+  },
+  modalCenter: {
+    justifyContent: 'space-between',
+    height: scale(150),
+    alignItems: 'center',
+  },
+  circleX: {
+    height: scale(140),
+    width: scale(140),
+    borderRadius: scale(70),
+    backgroundColor: 'red',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

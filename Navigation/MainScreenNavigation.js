@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {scale} from 'react-native-size-matters';
 import TopScreen from './ScreenNavigation';
-import {MoreIcon, SearchIcon, BackIcon, CancelIcon} from '../svg/icon';
+import {MoreIcon, BackIcon, CancelIcon, AddUserIcon} from '../svg/icon';
 import ChatingScreen from '../src/screen/ChatingScreen';
 import {useRoute, useNavigation} from '@react-navigation/native';
 import ChatRoom from '../src/screen/ChatRoom';
@@ -25,38 +25,43 @@ import CryptoJS from 'react-native-crypto-js';
 const Stack = createStackNavigator();
 
 function MainStack() {
+  const route = useRoute();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
   const navigation = useNavigation();
-  const [roomName, setRoomName] = useState('');
   const user = auth().currentUser.toJSON();
-  function createChatRoom() {
-    if (roomName.length > 0) {
+  function createChatRoom(input) {
+    if (input.length > 0) {
       // create new thread using firebase & firestore
       firestore()
         .collection('MESSAGE_THREADS')
         .add({
           roomof: user.uid,
-          name: roomName,
+          name: input,
           latestMessage: {
             text: CryptoJS.AES.encrypt(
-              `${roomName} created. Welcome!`,
+              `Group ${input} created. Welcome!`,
               '1998',
             ).toString(),
             createdAt: new Date().getTime(),
+            sender: '',
+            type: '',
           },
           members: [user.uid],
           avatar: [user.photoURL],
           chatImg: '',
+          type: 'group',
         })
         .then((docRef) => {
           docRef.collection('MESSAGES').add({
             text: CryptoJS.AES.encrypt(
-              `${roomName} created. Welcome!`,
+              `Group ${input} created. Welcome!`,
               '1998',
             ).toString(),
             createdAt: new Date().getTime(),
+            sender: '',
             system: true,
+            type: '',
           });
           console.log('Room create');
         });
@@ -132,6 +137,7 @@ function MainStack() {
     );
   }
   function ModalCreateRoom() {
+    const [roomName, setRoomName] = useState('');
     return (
       <Modal
         animationType="fade"
@@ -145,6 +151,7 @@ function MainStack() {
             <View style={styles.modalIcon}>
               <TouchableOpacity
                 onPress={() => {
+                  setRoomName('');
                   setModalVisible1(false);
                 }}>
                 <CancelIcon />
@@ -154,6 +161,7 @@ function MainStack() {
               <View style={styles.textInputArea}>
                 <TextInput
                   value={roomName}
+                  onPressOut={console.log()}
                   onChangeText={(input) => setRoomName(input)}
                   style={styles.textInput}
                   placeholder={'Nhập tên phòng'}
@@ -162,7 +170,8 @@ function MainStack() {
               <TouchableOpacity
                 style={styles.button}
                 onPress={() => {
-                  createChatRoom();
+                  createChatRoom(roomName);
+                  setModalVisible1(false);
                 }}>
                 <Text>Create Chat Room</Text>
               </TouchableOpacity>
@@ -191,9 +200,6 @@ function MainStack() {
           headerBackImage: (props) => <LogoTitle {...props} />,
           headerRight: () => (
             <View style={styles.topRight}>
-              <TouchableOpacity>
-                <SearchIcon />
-              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setModalVisible(true);
@@ -210,46 +216,7 @@ function MainStack() {
         name="ChatingScreen"
         component={ChatingScreen}
         options={{
-          headerTitle: (props) => {},
-          headerBackImage: (props) => <LogoTitleBack text="Back" {...props} />,
-          headerRight: () => (
-            <View style={styles.topRight}>
-              <TouchableOpacity>
-                <SearchIcon />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(true);
-                }}>
-                <MoreIcon />
-              </TouchableOpacity>
-              <ModalView />
-              <ModalCreateRoom />
-            </View>
-          ),
-        }}
-      />
-      <Stack.Screen
-        name="ChatRoom"
-        component={ChatRoom}
-        options={{
-          headerTitle: (props) => {},
-          headerBackImage: (props) => <LogoTitleBack text="Room" {...props} />,
-          headerRight: () => (
-            <View style={styles.topRight}>
-              <TouchableOpacity>
-                <SearchIcon />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(true);
-                }}>
-                <MoreIcon />
-              </TouchableOpacity>
-              <ModalView />
-              <ModalCreateRoom />
-            </View>
-          ),
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -290,12 +257,13 @@ const styles = StyleSheet.create({
   topRight: {
     flexDirection: 'row',
     width: scale(50),
-    justifyContent: 'space-between',
-    marginRight: scale(10),
+    justifyContent: 'flex-end',
+    marginRight: scale(12),
   },
   topLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: scale(5),
   },
   topCenter: {
     flexDirection: 'row',
@@ -382,7 +350,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     height: scale(40),
     width: '95%',
-    backgroundColor: 'white',
     alignItems: 'center',
   },
 });

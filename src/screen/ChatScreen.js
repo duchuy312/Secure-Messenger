@@ -3,7 +3,6 @@ import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
-  ImageBackground,
   StyleSheet,
   Image,
   TouchableOpacity,
@@ -13,20 +12,40 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
-import {GiftedChat} from 'react-native-gifted-chat';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import Separator from '../component/Separator';
 import CryptoJS from 'react-native-crypto-js';
+import {SearchIcon} from '../../svg/icon';
+import Moment from 'react-moment';
+
 const ChatScreen = () => {
   const navigation = useNavigation();
-  const [roomName, setRoomName] = useState('');
   const user = auth().currentUser.toJSON();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ChatAvatar, setChatAvatar] = useState([]);
-  const [ChatName, setChatName] = useState([]);
+  const [search, setSearch] = useState('');
+  const [filteredDataSource, setFilteredDataSource] = useState([]);
+  const searchFilterFunction = (text) => {
+    // Check if searched text is not blank
+    if (text) {
+      // Inserted text is not blank
+      // Filter the masterDataSource
+      // Update FilteredDataSource
+      const newData = threads.filter(function (item) {
+        const itemData = item.name ? item.name.toUpperCase() : ''.toUpperCase();
+        const textData = text.toUpperCase();
+        return itemData.indexOf(textData) > -1;
+      });
+      setFilteredDataSource(newData);
+      setSearch(text);
+    } else {
+      // Inserted text is blank
+      // Update FilteredDataSource with masterDataSource
+      setFilteredDataSource(threads);
+      setSearch(text);
+    }
+  };
   useEffect(() => {
     firestore()
       .collection('MESSAGE_THREADS')
@@ -46,6 +65,7 @@ const ChatScreen = () => {
             '1998',
           ).toString(CryptoJS.enc.Utf8);
         }
+        setFilteredDataSource(datathreads);
         setThreads(datathreads);
         if (loading) {
           setLoading(false);
@@ -55,14 +75,18 @@ const ChatScreen = () => {
   }, [threads.length]);
   function checkAvatar() {
     var arr = [];
-    var arr1 = [];
-    for (let i = 0; i < threads.length; i++) {
-      if (threads[i].avatar.length === 2) {
-        for (let j = 0; j < threads[i].avatar.length; j++) {
-          if (threads[i].avatar[j] !== user.photoURL) {
-            arr[i] = threads[i].avatar[j];
+    var arr1 = threads.sort(
+      (a, b) => b.latestMessage.createdAt - a.latestMessage.createdAt,
+    );
+    for (let i = 0; i < arr1.length; i++) {
+      if (arr1[i].avatar.length === 2) {
+        for (let j = 0; j < arr1[i].avatar.length; j++) {
+          if (arr1[i].avatar[j] !== user.photoURL) {
+            arr[i] = arr1[i].avatar[j];
           }
         }
+      } else if (arr1[i].avatar.length === 1) {
+        arr[i] = arr1[i].avatar[0];
       }
     }
     setChatAvatar(arr);
@@ -72,45 +96,98 @@ const ChatScreen = () => {
   }
   return (
     <View style={styles.Container}>
-      <View style={styles.ContainerCenter}>
-        <FlatList
-          data={threads}
-          keyExtractor={(item, index) => item._id}
-          renderItem={({item, index}) => (
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('ChatingScreen', {thread: item})
-              }>
-              <View style={styles.row}>
-                <View style={styles.AvatarUserContainer}>
-                  <View style={styles.circle}>
-                    <Image
-                      style={styles.AvatarUser}
-                      source={{
-                        uri: ChatAvatar[index],
-                      }}
-                    />
-                  </View>
-                </View>
-                <View style={styles.content}>
-                  <View style={styles.header}>
-                    {item.name !== user.displayName ? (
-                      <Text style={styles.nameText}>{item.name}</Text>
-                    ) : (
-                      <Text style={styles.nameText}>{item.starter}</Text>
-                    )}
-                  </View>
-                  <Text style={styles.contentText}>
-                    {item.latestMessage.text.slice(0, 90)}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
-          ItemSeparatorComponent={() => <Separator />}
+      <View style={styles.textInputArea}>
+        <TouchableOpacity style={styles.icon}>
+          <SearchIcon />
+        </TouchableOpacity>
+        <TextInput
+          value={search}
+          onChangeText={(text) => searchFilterFunction(text)}
+          onClear={(text) => searchFilterFunction('')}
+          style={styles.textInput}
+          placeholder={'Search'}
         />
       </View>
-      <View style={styles.ContainerBot} />
+      <FlatList
+        style={{marginTop: scale(12)}}
+        data={filteredDataSource.sort(
+          (a, b) => b.latestMessage.createdAt - a.latestMessage.createdAt,
+        )}
+        keyExtractor={(item, index) => item._id}
+        renderItem={({item, index}) => (
+          <TouchableOpacity
+            style={styles.rowTouch}
+            onPress={() =>
+              navigation.navigate('ChatingScreen', {
+                thread: item,
+                idroom: item._id,
+                member: item.members,
+                type: item.type,
+              })
+            }>
+            <View style={styles.row}>
+              <View style={styles.AvatarUserContainer}>
+                <View style={styles.circle}>
+                  <Image
+                    style={styles.AvatarUser}
+                    source={{
+                      uri: ChatAvatar[index],
+                    }}
+                  />
+                </View>
+              </View>
+              <View style={styles.content}>
+                <View style={styles.header}>
+                  {item.name !== user.displayName ? (
+                    <Text style={styles.nameText}>{item.name}</Text>
+                  ) : (
+                    <Text style={styles.nameText}>{item.starter}</Text>
+                  )}
+                </View>
+                {item.type === 'individual' ? (
+                  item.latestMessage.sender === user.displayName ? (
+                    <Text numberOfLines={1} style={styles.contentText}>
+                      {'You: ' + item.latestMessage.text.slice(0, 90)}
+                    </Text>
+                  ) : (
+                    <Text numberOfLines={1} style={styles.contentText}>
+                      {item.latestMessage.text.slice(0, 90)}
+                    </Text>
+                  )
+                ) : item.latestMessage.type !== '' ? (
+                  item.latestMessage.sender === user.displayName ? (
+                    <Text numberOfLines={1} style={styles.contentText}>
+                      {'You: ' + item.latestMessage.text.slice(0, 90)}
+                    </Text>
+                  ) : (
+                    <Text numberOfLines={1} style={styles.contentText}>
+                      {item.latestMessage.sender +
+                        ': ' +
+                        item.latestMessage.text.slice(0, 90)}
+                    </Text>
+                  )
+                ) : (
+                  <Text numberOfLines={1} style={styles.contentText}>
+                    {item.latestMessage.text.slice(0, 90)}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.timeContainer}>
+                <Text style={styles.contentText}>
+                  {new Date(item.latestMessage.createdAt)
+                    .toLocaleString('en-GB')
+                    .substring(11, 17)}
+                </Text>
+                <Text style={styles.contentText}>
+                  {new Date(item.latestMessage.createdAt)
+                    .toLocaleString('en-GB')
+                    .substring(0, 5)}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 };
@@ -120,61 +197,47 @@ const styles = StyleSheet.create({
   Container: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  ContainerCenter: {
-    width: '100%',
-    height: '80%',
-  },
-  ContainerBot: {
-    height: '20%',
-    width: '100%',
-    alignItems: 'center',
-  },
-  logocontainer: {
-    height: scale(160),
-    width: scale(160),
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  logo: {
-    flex: 1,
-    height: '100%',
-    width: '100%',
-    resizeMode: 'stretch',
-  },
-  text: {
-    fontSize: scale(80),
-    color: 'white',
-    fontFamily: 'kindandrich',
+    backgroundColor: '#efefef',
   },
   textInputArea: {
-    backgroundColor: '#F6F4F5',
-    width: scale(290),
-    height: scale(50),
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    width: '96%',
+    height: scale(40),
     alignSelf: 'center',
-    borderRadius: scale(25),
-    marginBottom: scale(20),
+    borderRadius: scale(10),
+    marginTop: scale(12),
   },
   textInput: {
-    width: scale(290),
-    height: scale(50),
+    width: '96%',
+    height: scale(40),
     alignSelf: 'center',
     fontSize: scale(18),
-    marginLeft: scale(30),
+  },
+  icon: {
+    width: scale(30),
+    justifyContent: 'center',
+    paddingLeft: scale(8),
+  },
+  rowTouch: {
+    width: '96%',
+    height: scale(80),
+    marginHorizontal: '2%',
+    borderRadius: scale(10),
+    marginBottom: scale(12),
   },
   row: {
-    paddingRight: 10,
-    paddingLeft: 5,
-    paddingVertical: 5,
+    borderRadius: scale(10),
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    height: scale(100),
-    borderBottomWidth: scale(1 / 2),
+    height: scale(80),
+    backgroundColor: 'white',
   },
   content: {
-    flexShrink: 1,
+    width: '50%',
+    height: '100%',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -184,7 +247,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#000',
   },
-  dateText: {},
   contentText: {
     color: '#949494',
     fontSize: 16,
@@ -197,8 +259,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   circle: {
-    height: scale(80),
-    width: scale(80),
+    height: scale(70),
+    width: scale(70),
     overflow: 'hidden',
     borderRadius: scale(40),
   },
@@ -208,5 +270,11 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     resizeMode: 'stretch',
+  },
+  timeContainer: {
+    width: '20%',
+    height: '100%',
+    paddingTop: scale(5),
+    paddingLeft: scale(22),
   },
 });

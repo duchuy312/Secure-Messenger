@@ -29,7 +29,6 @@ function TopScreen() {
   }
   return (
     <Tab.Navigator
-      initialRouteName="Chats"
       screenOptions={({route}) => ({
         tabBarLabel: ({focused}) => {
           let iconName;
@@ -61,7 +60,7 @@ function TopScreen() {
                 icon={<ChatIcon color="#9D9D9D" />}
               />
             );
-          } else if (route.name === 'Contacts') {
+          } else if (route.name === 'Contact') {
             iconName = focused ? (
               <LogoTitle
                 textcolor="white"
@@ -88,9 +87,9 @@ function TopScreen() {
           justifyContent: 'center',
         },
       }}>
-      <Tab.Screen name="Calls" component={CallScreen} />
       <Tab.Screen name="Chats" component={ChatScreen} />
-      <Tab.Screen name="Contacts" component={ContactScreen} />
+      <Tab.Screen name="Contact" component={ContactScreen} />
+      <Tab.Screen name="Calls" component={CallScreen} />
     </Tab.Navigator>
   );
 }
