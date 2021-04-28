@@ -4,6 +4,7 @@ import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs
 import {scale} from 'react-native-size-matters';
 import {useRoute} from '@react-navigation/native';
 import CallScreen from '../src/screen/CallScreen';
+import CallsScreen from '../src/screen/CallsScreen';
 import ChatScreen from '../src/screen/ChatScreen';
 import ContactScreen from '../src/screen/ContactScreen';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
@@ -89,7 +90,7 @@ function TopScreen() {
       }}>
       <Tab.Screen name="Chats" component={ChatScreen} />
       <Tab.Screen name="Contact" component={ContactScreen} />
-      <Tab.Screen name="Calls" component={CallScreen} />
+      <Tab.Screen name="Calls" component={CallsScreen} />
     </Tab.Navigator>
   );
 }

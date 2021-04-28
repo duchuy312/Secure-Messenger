@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {createStackNavigator} from '@react-navigation/stack';
 import {NavigationContainer} from '@react-navigation/native';
 import CoverScreen from '../src/CoverScreen';
@@ -8,9 +8,12 @@ import ChatingScreen from '../src/screen/ChatingScreen';
 import RegisterScreen from '../src/RegisterScreen';
 import {Provider} from 'react-redux';
 import store from '../redux/store';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
 const Stack = createStackNavigator();
 
 function BeginNavigation() {
+
+
   return (
     <Provider store={store}>
       <NavigationContainer>

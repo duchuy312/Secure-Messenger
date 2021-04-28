@@ -9,27 +9,37 @@ import {
   StatusBar,
   Modal,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
 import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';
-import {XIcon, CheckIcon} from '../svg/icon';
+import {XIcon, CheckIcon, GoogleIcon, FacebookIcon} from '../svg/icon';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import {LoginManager, AccessToken} from 'react-native-fbsdk';
 
 const LoginScreen = () => {
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        '891707416808-t0cms7pchs880n8ugf7h2pjjlmh7u6kf.apps.googleusercontent.com',
+    });
+  }, [user]);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigation = useNavigation();
+  const [user, setUser] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
   const SignIn = async (emailuser, password) => {
     if (emailuser !== '' && password !== '') {
       try {
         await firebase.auth().signInWithEmailAndPassword(emailuser, password);
-        firebase.auth().onAuthStateChanged((user) => {
-          console.log(user);
+        firebase.auth().onAuthStateChanged((userfb) => {
+          setUser(userfb);
+          setModalVisible1(true);
         });
-        setModalVisible1(true);
       } catch (error) {
         setModalVisible(true);
       }
@@ -41,6 +51,39 @@ const LoginScreen = () => {
     setEmail('');
     setPass('');
   };
+  async function onGoogleButtonPress() {
+    // Get the users ID token
+    const {idToken} = await GoogleSignin.signIn();
+    // Create a Google credential with the token
+    firebase.auth().onAuthStateChanged((userfb) => {
+      setUser(userfb);
+      setModalVisible1(true);
+    });
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    // Sign-in the user with the credential
+    await auth().signInWithCredential(googleCredential);
+  }
+  async function onFacebookButtonPress() {
+    // Attempt login with permissions
+    const result = await LoginManager.logInWithPermissions([
+      'public_profile',
+      'email',
+    ]);
+    if (result.isCancelled) {
+      throw 'User cancelled the login process';
+    }
+    // Once signed in, get the users AccesToken
+    const data = await AccessToken.getCurrentAccessToken();
+    if (!data) {
+      throw 'Something went wrong obtaining access token';
+    }
+    // Create a Firebase credential with the AccessToken
+    const facebookCredential = auth.FacebookAuthProvider.credential(
+      data.accessToken,
+    );
+    // Sign-in the user with the credential
+    await auth().signInWithCredential(facebookCredential);
+  }
   return (
     <ImageBackground
       source={require('../assets/image/gradient_2.png')}
@@ -49,7 +92,7 @@ const LoginScreen = () => {
       <View style={styles.ContainerTop}>
         <Text style={styles.text}>Secure Chat</Text>
       </View>
-      <View style={styles.ContainerCenter}>
+      <KeyboardAvoidingView style={styles.ContainerCenter}>
         <View style={styles.textInputContainer}>
           <View style={styles.textInputArea}>
             <TextInput
@@ -86,8 +129,29 @@ const LoginScreen = () => {
             <Text style={styles.linktext}>Đăng Ký</Text>
           </TouchableOpacity>
         </View>
-      </View>
-      <View style={styles.ContainerBot} />
+        <TouchableOpacity
+          onPress={() => onGoogleButtonPress()}
+          style={styles.GoogleButton}>
+          <View style={styles.GoogleIcon}>
+            <GoogleIcon />
+          </View>
+          <View style={styles.GoogleButtonRight}>
+            <Text style={styles.GoogleButtonText}>
+              Login with Google Account
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => onFacebookButtonPress()}
+          style={styles.FacebookButton}>
+          <View style={styles.FacebookIcon}>
+            <FacebookIcon />
+          </View>
+          <View style={styles.GoogleButtonRight}>
+            <Text style={styles.GoogleButtonText}>Login with Facebook</Text>
+          </View>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
       <Modal
         animationType="fade"
         transparent={true}
@@ -151,13 +215,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ContainerCenter: {
-    height: '60%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  ContainerBot: {
-    height: '15%',
+    paddingTop: scale(80),
+    height: '75%',
     alignItems: 'center',
     width: '100%',
   },
@@ -179,7 +238,7 @@ const styles = StyleSheet.create({
     fontFamily: 'kindandrich',
   },
   textInputContainer: {
-    height: scale(150),
+    height: scale(140),
     width: '100%',
   },
   textInputArea: {
@@ -256,5 +315,53 @@ const styles = StyleSheet.create({
     backgroundColor: 'red',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  GoogleButton: {
+    marginTop: scale(20),
+    flexDirection: 'row',
+    width: scale(220),
+    height: scale(40),
+    backgroundColor: '#0079ff',
+    borderRadius: scale(5),
+    borderWidth: scale(1 / 2),
+    borderColor: '#518ef8',
+    elevation: scale(1),
+  },
+  GoogleIcon: {
+    borderTopLeftRadius: scale(5),
+    borderBottomLeftRadius: scale(5),
+    height: scale(40),
+    backgroundColor: 'white',
+    width: scale(40),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  GoogleButtonRight: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: scale(175),
+  },
+  GoogleButtonText: {
+    color: 'white',
+    fontSize: scale(14),
+  },
+  FacebookIcon: {
+    borderTopLeftRadius: scale(5),
+    borderBottomLeftRadius: scale(5),
+    height: scale(40),
+    backgroundColor: '#1976d2',
+    width: scale(40),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  FacebookButton: {
+    marginTop: scale(20),
+    flexDirection: 'row',
+    width: scale(220),
+    height: scale(40),
+    backgroundColor: '#2149a4',
+    borderRadius: scale(5),
+    elevation: scale(1),
+    alignItems: 'center',
   },
 });

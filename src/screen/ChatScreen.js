@@ -9,16 +9,25 @@ import {
   TextInput,
   ActivityIndicator,
   FlatList,
+  ImageBackground,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import CryptoJS from 'react-native-crypto-js';
-import {SearchIcon} from '../../svg/icon';
-import Moment from 'react-moment';
+import {SearchIcon, GroupIcon} from '../../svg/icon';
+import moment from 'moment';
+// ...the rest of your code
 
 const ChatScreen = () => {
+  // const [initializing, setInitializing] = useState(true);
+  // const [user, setUser] = useState();
+  // function onAuthStateChanged(user) {
+  //   setUser(user);
+  //   if (initializing) setInitializing(false);
+  // }
+
   const navigation = useNavigation();
   const user = auth().currentUser.toJSON();
   const [threads, setThreads] = useState([]);
@@ -128,12 +137,17 @@ const ChatScreen = () => {
             <View style={styles.row}>
               <View style={styles.AvatarUserContainer}>
                 <View style={styles.circle}>
-                  <Image
+                  <ImageBackground
                     style={styles.AvatarUser}
                     source={{
                       uri: ChatAvatar[index],
-                    }}
-                  />
+                    }}>
+                    {item.type === 'group' ? (
+                      <View style={styles.GroupIconPlace}>
+                        <GroupIcon />
+                      </View>
+                    ) : null}
+                  </ImageBackground>
                 </View>
               </View>
               <View style={styles.content}>
@@ -175,13 +189,13 @@ const ChatScreen = () => {
               <View style={styles.timeContainer}>
                 <Text style={styles.contentText}>
                   {new Date(item.latestMessage.createdAt)
-                    .toLocaleString('en-GB')
-                    .substring(11, 17)}
+                    .toLocaleTimeString('en-GB')
+                    .substring(0, 5)}
                 </Text>
                 <Text style={styles.contentText}>
-                  {new Date(item.latestMessage.createdAt)
-                    .toLocaleString('en-GB')
-                    .substring(0, 5)}
+                  {moment(item.latestMessage.createdAt)
+                    .format('ll')
+                    .substring(0, 6)}
                 </Text>
               </View>
             </View>
@@ -270,11 +284,19 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     resizeMode: 'stretch',
+    justifyContent: 'flex-end',
   },
   timeContainer: {
     width: '20%',
     height: '100%',
     paddingTop: scale(5),
     paddingLeft: scale(22),
+  },
+  GroupIconPlace: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: scale(8),
+    paddingRight: scale(2),
   },
 });

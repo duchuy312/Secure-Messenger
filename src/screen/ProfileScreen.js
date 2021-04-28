@@ -19,9 +19,8 @@ const ProfileScreen = () => {
   const navigation = useNavigation();
   const [userData, setUserData] = useState([]);
   const [loading, setLoading] = useState(true);
-  console.log(userData);
   const getUser = async () => {
-    await firestore()
+    firestore()
       .collection('USERS')
       .where('userid', '==', user.uid)
       .onSnapshot((querySnapshot) => {
@@ -141,6 +140,9 @@ const ProfileScreen = () => {
             style={styles.button1}
             onPress={() => {
               navigation.navigate('LoginScreen');
+              auth()
+                .signOut()
+                .then(() => console.log('User signed out!'));
             }}>
             <View style={styles.IconAndText}>
               <LogoutIcon color="black" />
