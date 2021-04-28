@@ -1,4 +1,5 @@
-import React, {useState} from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, {useState, useEffect} from 'react';
 import {createStackNavigator} from '@react-navigation/stack';
 import {
   View,
@@ -14,7 +15,6 @@ import TopScreen from './ScreenNavigation';
 import {MoreIcon, BackIcon, CancelIcon, AddUserIcon} from '../svg/icon';
 import ChatingScreen from '../src/screen/ChatingScreen';
 import {useRoute, useNavigation} from '@react-navigation/native';
-import ChatRoom from '../src/screen/ChatRoom';
 import ProfileScreen from '../src/screen/ProfileScreen';
 import EditProfileScreen from '../src/screen/EditProfileScreen';
 import LoginScreen from '../src/LoginSceen';
@@ -26,10 +26,51 @@ const Stack = createStackNavigator();
 
 function MainStack() {
   const route = useRoute();
+  const [UserList, setUserList] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
   const navigation = useNavigation();
   const user = auth().currentUser.toJSON();
+  function createUser(id) {
+    // create new thread using firebase & firestore
+    firestore()
+      .collection('USERS')
+      .add({
+        email: user.email,
+        userid: id,
+        fullname: user.displayName,
+        gender: 3,
+        phone: '',
+        birthday: 0,
+        city: '',
+        userImg: user.photoURL,
+      })
+      .then((response) => {
+        console.log(response);
+      });
+  }
+  const getUser = () => {
+    try {
+      firestore()
+        .collection('USERS')
+        .where('userid', '==', user.uid)
+        .onSnapshot((querySnapshot) => {
+          const UserThreads = querySnapshot.docs.map((documentSnapshot) => {
+            return {
+              owner: user.uid,
+              _id: documentSnapshot.id,
+              ...documentSnapshot.data(),
+            };
+          });
+          UserThreads.length === 0 ? createUser(user.uid) : null;
+        });
+    } catch {
+      (err) => console.log(err);
+    }
+  };
+  useEffect(() => {
+    getUser();
+  }, []);
   function createChatRoom(input) {
     if (input.length > 0) {
       // create new thread using firebase & firestore

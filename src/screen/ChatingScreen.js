@@ -42,7 +42,6 @@ import AvatarDefault from '../../assets/image/default-ava.png';
 import CryptoJS from 'react-native-crypto-js';
 import Separator from '../component/Separator';
 import * as ImagePicker from 'react-native-image-picker';
-
 const ChatingScreen = () => {
   const route = useRoute();
   const [messages, setMessages] = useState([]);
@@ -172,6 +171,7 @@ const ChatingScreen = () => {
   }
   const getUser = async () => {
     var arr = [];
+    var arr1 = Member;
     firestore()
       .collection('USERS')
       .where('userid', '!=', user.uid)
@@ -188,8 +188,10 @@ const ChatingScreen = () => {
             Member[i] !== undefined
               ? (arr[i] = Member.includes(UserThreads[i].userid))
               : (arr[i] = false);
+            arr1[i + 1] = '';
           }
         }
+        setMember(arr1);
         setChecked(arr);
         setFilteredDataSource(UserThreads);
         setUserList(UserThreads);
@@ -203,8 +205,8 @@ const ChatingScreen = () => {
     setMember(arr1);
     setChecked(arr);
   }
+  console.log(Member);
   useEffect(() => {
-    getUser();
     const messagesListener = firestore()
       .collection('MESSAGE_THREADS')
       .doc(thread._id)
@@ -351,7 +353,11 @@ const ChatingScreen = () => {
         <View style={styles.topRight}>
           {thread.type === 'group' ? (
             thread.roomof === user.uid ? (
-              <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setModalVisible(true);
+                  getUser();
+                }}>
                 <AddUserIcon />
               </TouchableOpacity>
             ) : (

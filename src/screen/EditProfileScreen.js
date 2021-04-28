@@ -32,14 +32,13 @@ const EditProfileScreen = () => {
   const [name, setName] = useState(route.params.fullname);
   const [avatar, setAvatar] = useState('');
   const [place, setPlace] = useState(route.params.city);
-  const [imageSource, setImageSource] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const user = auth().currentUser.toJSON();
   console.log(user);
   const [UrlAvatar, setUrlAvatar] = useState(route.params.userImg);
   const update = {
     displayName: name,
-    photoURL: UrlAvatar,
+    photoURL: avatar,
   };
   const handleUpdate = async () => {
     await auth().currentUser.updateProfile(update);
@@ -95,9 +94,9 @@ const EditProfileScreen = () => {
       } else if (response.customButton) {
         console.log('User tapped custom button: ', response.customButton);
       } else {
-        let source = {uri: response.uri};
         // ADD THIS
-        setUrlAvatar(source.uri);
+        setAvatar(response.uri);
+        setUrlAvatar(`data:image/png;base64,${response.base64}`);
       }
     });
   }

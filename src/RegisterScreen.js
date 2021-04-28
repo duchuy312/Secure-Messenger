@@ -30,7 +30,7 @@ const RegisterScreen = () => {
   useEffect(() => {
     getRandomName();
   }, []);
-  function createUser() {
+  function createUser(id) {
     // create new thread using firebase & firestore
     firestore()
       .collection('USERS')
