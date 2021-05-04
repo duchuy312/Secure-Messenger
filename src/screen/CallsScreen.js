@@ -65,19 +65,7 @@ const CallsScreen = () => {
           setLoading(false);
         }
       });
-    // firestore()
-    //   .collection('USERS')
-    //   .onSnapshot((querySnapshot) => {
-    //     const UserCheckThreads = querySnapshot.docs.map((documentSnapshot) => {
-    //       return documentSnapshot._data.userid;
-    //     });
-    //     setUserCheckList(UserCheckThreads);
-    //     if (loading) {
-    //       setLoading(false);
-    //     }
-    //   });
   };
-  // console.log(userCheckList.includes(user.uid));
   useEffect(() => {
     getRoom();
   }, []);

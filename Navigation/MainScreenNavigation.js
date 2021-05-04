@@ -68,6 +68,7 @@ function MainStack() {
       (err) => console.log(err);
     }
   };
+
   useEffect(() => {
     getUser();
   }, []);

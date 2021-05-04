@@ -187,15 +187,13 @@ const ChatScreen = () => {
                 )}
               </View>
               <View style={styles.timeContainer}>
-                <Text style={styles.contentText}>
+                <Text style={styles.timeText}>
                   {new Date(item.latestMessage.createdAt)
                     .toLocaleTimeString('en-GB')
                     .substring(0, 5)}
                 </Text>
-                <Text style={styles.contentText}>
-                  {moment(item.latestMessage.createdAt)
-                    .format('ll')
-                    .substring(0, 6)}
+                <Text style={styles.timeText}>
+                  {moment(item.latestMessage.createdAt).format('l')}
                 </Text>
               </View>
             </View>
@@ -249,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   content: {
-    width: '50%',
+    width: '46%',
     height: '100%',
     justifyContent: 'center',
   },
@@ -258,13 +256,18 @@ const styles = StyleSheet.create({
   },
   nameText: {
     fontWeight: '600',
-    fontSize: 18,
+    fontSize: scale(15),
     color: '#000',
   },
   contentText: {
     color: '#949494',
-    fontSize: 16,
-    marginTop: 2,
+    fontSize: scale(14),
+    marginTop: scale(2),
+  },
+  timeText: {
+    color: '#949494',
+    fontSize: scale(12),
+    marginTop: scale(2),
   },
   AvatarUserContainer: {
     width: '30%',
@@ -287,7 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   timeContainer: {
-    width: '20%',
+    width: '24%',
     height: '100%',
     paddingTop: scale(5),
     paddingLeft: scale(22),
