@@ -18,14 +18,10 @@ import auth from '@react-native-firebase/auth';
 import {XIcon, CheckIcon, GoogleIcon, FacebookIcon} from '../svg/icon';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {LoginManager, AccessToken} from 'react-native-fbsdk';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import md5 from 'md5';
+import {powerMod, toNumber} from './Crypto/PowerMod';
 const LoginScreen = () => {
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId:
-        '891707416808-t0cms7pchs880n8ugf7h2pjjlmh7u6kf.apps.googleusercontent.com',
-    });
-  }, [user]);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigation = useNavigation();
@@ -39,6 +35,8 @@ const LoginScreen = () => {
         firebase.auth().onAuthStateChanged((userfb) => {
           setUser(userfb);
           setModalVisible1(true);
+          ClearInput();
+          storeSecret(password);
         });
       } catch (error) {
         setModalVisible(true);
@@ -53,6 +51,10 @@ const LoginScreen = () => {
   };
   async function onGoogleButtonPress() {
     // Get the users ID token
+    GoogleSignin.configure({
+      webClientId:
+        '891707416808-t0cms7pchs880n8ugf7h2pjjlmh7u6kf.apps.googleusercontent.com',
+    });
     const {idToken} = await GoogleSignin.signIn();
     // Create a Google credential with the token
     firebase.auth().onAuthStateChanged((userfb) => {
@@ -63,27 +65,13 @@ const LoginScreen = () => {
     // Sign-in the user with the credential
     await auth().signInWithCredential(googleCredential);
   }
-  async function onFacebookButtonPress() {
-    // Attempt login with permissions
-    const result = await LoginManager.logInWithPermissions([
-      'public_profile',
-      'email',
-    ]);
-    if (result.isCancelled) {
-      throw 'User cancelled the login process';
+  const storeSecret = async (value) => {
+    try {
+      await AsyncStorage.setItem('@MySecret', toNumber(md5(value)));
+    } catch (err) {
+      alert('Saving error');
     }
-    // Once signed in, get the users AccesToken
-    const data = await AccessToken.getCurrentAccessToken();
-    if (!data) {
-      throw 'Something went wrong obtaining access token';
-    }
-    // Create a Firebase credential with the AccessToken
-    const facebookCredential = auth.FacebookAuthProvider.credential(
-      data.accessToken,
-    );
-    // Sign-in the user with the credential
-    await auth().signInWithCredential(facebookCredential);
-  }
+  };
   return (
     <ImageBackground
       source={require('../assets/image/gradient_2.png')}
@@ -116,7 +104,6 @@ const LoginScreen = () => {
           style={styles.button}
           onPress={() => {
             SignIn(email, pass);
-            ClearInput();
           }}>
           <Text style={styles.ButtonText}>Đăng Nhập</Text>
         </TouchableOpacity>
@@ -139,16 +126,6 @@ const LoginScreen = () => {
             <Text style={styles.GoogleButtonText}>
               Login with Google Account
             </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => onFacebookButtonPress()}
-          style={styles.FacebookButton}>
-          <View style={styles.FacebookIcon}>
-            <FacebookIcon />
-          </View>
-          <View style={styles.GoogleButtonRight}>
-            <Text style={styles.GoogleButtonText}>Login with Facebook</Text>
           </View>
         </TouchableOpacity>
       </KeyboardAvoidingView>

@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, {useState, useEffect} from 'react';
 import {createStackNavigator} from '@react-navigation/stack';
@@ -25,8 +26,7 @@ import CryptoJS from 'react-native-crypto-js';
 const Stack = createStackNavigator();
 
 function MainStack() {
-  const route = useRoute();
-  const [UserList, setUserList] = useState([]);
+  const [UserList, setUserList] = useState();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
   const navigation = useNavigation();
@@ -46,7 +46,7 @@ function MainStack() {
         userImg: user.photoURL,
       })
       .then((response) => {
-        console.log(response);
+        Alert.alert('Created');
       });
   }
   const getUser = () => {
@@ -62,10 +62,11 @@ function MainStack() {
               ...documentSnapshot.data(),
             };
           });
+          setUserList(UserThreads[0]);
           UserThreads.length === 0 ? createUser(user.uid) : null;
         });
     } catch {
-      (err) => console.log(err);
+      (err) => Alert.alert('error');
     }
   };
 
@@ -83,14 +84,14 @@ function MainStack() {
           latestMessage: {
             text: CryptoJS.AES.encrypt(
               `Group ${input} created. Welcome!`,
-              '1998',
+              '67b586709137805a5510ff19b9a1a5ac',
             ).toString(),
             createdAt: new Date().getTime(),
             sender: '',
             type: '',
           },
           members: [user.uid],
-          avatar: [user.photoURL],
+          avatar: [UserList.userImg],
           chatImg: '',
           type: 'group',
         })
@@ -98,22 +99,21 @@ function MainStack() {
           docRef.collection('MESSAGES').add({
             text: CryptoJS.AES.encrypt(
               `Group ${input} created. Welcome!`,
-              '1998',
+              '67b586709137805a5510ff19b9a1a5ac',
             ).toString(),
             createdAt: new Date().getTime(),
             sender: '',
             system: true,
             type: '',
           });
-          console.log('Room create');
         });
     }
   }
   function LogoTitle() {
     return (
-      <View style={styles.topLeft}>
+      <TouchableOpacity style={styles.topLeft}>
         <Text style={styles.topTittle}>Secure Chat</Text>
-      </View>
+      </TouchableOpacity>
     );
   }
   function ProfileTitle(props) {
@@ -160,13 +160,6 @@ function MainStack() {
               <TouchableOpacity
                 style={styles.modalItem}
                 onPress={() => {
-                  setModalVisible(false);
-                }}>
-                <Text>Setting</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalItem}
-                onPress={() => {
                   setModalVisible1(true);
                   setModalVisible(false);
                 }}>
@@ -203,7 +196,6 @@ function MainStack() {
               <View style={styles.textInputArea}>
                 <TextInput
                   value={roomName}
-                  onPressOut={console.log()}
                   onChangeText={(input) => setRoomName(input)}
                   style={styles.textInput}
                   placeholder={'Nhập tên phòng'}
@@ -297,15 +289,17 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   topRight: {
-    flexDirection: 'row',
     width: scale(50),
-    justifyContent: 'flex-end',
-    marginRight: scale(12),
+    justifyContent: 'center',
+    height: scale(50),
+    alignItems: 'center',
   },
   topLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: scale(5),
+    marginRight: scale(20),
+    height: scale(40),
+    width: scale(300),
   },
   topCenter: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
+import auth from '@react-native-firebase/auth';
 
 const CoverScreen = () => {
   const navigation = useNavigation();
@@ -33,7 +34,11 @@ const CoverScreen = () => {
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
-            navigation.navigate('LoginScreen');
+            {
+              auth().currentUser !== null
+                ? navigation.navigate('MainStack')
+                : navigation.navigate('LoginScreen');
+            }
           }}>
           <Text style={styles.buttonText}>Next page</Text>
         </TouchableOpacity>

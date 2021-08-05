@@ -56,6 +56,7 @@ const ChatingScreen = () => {
   const [search, setSearch] = useState('');
   const [change, setChange] = useState(true);
   const [filteredDataSource, setFilteredDataSource] = useState([]);
+  const [userData, setUserData] = useState([]);
   const searchFilterFunction = (text) => {
     // Check if searched text is not blank
     if (text) {
@@ -92,16 +93,14 @@ const ChatingScreen = () => {
     };
     ImagePicker.launchImageLibrary(options, (response) => {
       if (response.didCancel) {
-        console.log('User cancelled photo picker');
         Alert.alert('You did not select any image');
       } else if (response.error) {
-        console.log('ImagePicker Error: ', response.error);
+        Alert.alert('ImagePicker Error: ', response.error);
       } else if (response.customButton) {
-        console.log('User tapped custom button: ', response.customButton);
+        Alert.alert('User tapped custom button: ', response.customButton);
       } else {
         let source = {uri: response.uri};
         // ADD THIS
-        console.log(response);
         handleSend(
           [
             {
@@ -129,28 +128,34 @@ const ChatingScreen = () => {
         {merge: true},
       )
       .then(() => {
-        console.log('User Updated!');
+        Alert.alert('User Updated!');
         setModalVisible(false);
       });
   };
   async function handleSend(messagessend, image, typeMess) {
-    const text = CryptoJS.AES.encrypt(messagessend[0].text, '1998').toString();
+    const text =
+      route.params.type === 'group'
+        ? CryptoJS.AES.encrypt(
+            messagessend[0].text,
+            '67b586709137805a5510ff19b9a1a5ac',
+          ).toString()
+        : CryptoJS.AES.encrypt(
+            messagessend[0].text,
+            route.params.key,
+          ).toString();
     await firestore()
       .collection('MESSAGE_THREADS')
       .doc(thread._id)
       .collection('MESSAGES')
       .add({
         type: typeMess,
-        sender: user.displayName,
+        sender: userData.fullname,
         text,
         createdAt: new Date().getTime(),
         user: {
           _id: user.uid,
           email: user.email,
-          avatar:
-            user.photoURL === null
-              ? 'https://placeimg.com/480/480/people'
-              : user.photoURL,
+          avatar: userData.userImg,
         },
         image: image,
       });
@@ -161,7 +166,7 @@ const ChatingScreen = () => {
         {
           latestMessage: {
             type: typeMess,
-            sender: user.displayName,
+            sender: userData.fullname,
             text,
             createdAt: new Date().getTime(),
           },
@@ -169,6 +174,20 @@ const ChatingScreen = () => {
         {merge: true},
       );
   }
+  const getUserAuth = async () => {
+    firestore()
+      .collection('USERS')
+      .where('userid', '==', user.uid)
+      .onSnapshot((querySnapshot) => {
+        const threads = querySnapshot.docs.map((documentSnapshot) => {
+          return {
+            _id: documentSnapshot.id,
+            ...documentSnapshot.data(),
+          };
+        });
+        setUserData(threads[0]);
+      });
+  };
   const getUser = async () => {
     var arr = [];
     var arr1 = Member;
@@ -205,8 +224,8 @@ const ChatingScreen = () => {
     setMember(arr1);
     setChecked(arr);
   }
-  console.log(Member);
   useEffect(() => {
+    getUserAuth();
     const messagesListener = firestore()
       .collection('MESSAGE_THREADS')
       .doc(thread._id)
@@ -231,10 +250,17 @@ const ChatingScreen = () => {
           return data;
         });
         for (let i = 0; i < datamessages.length; i++) {
-          datamessages[i].text = CryptoJS.AES.decrypt(
-            datamessages[i].text,
-            '1998',
-          ).toString(CryptoJS.enc.Utf8);
+          if (route.params.type === 'group') {
+            datamessages[i].text = CryptoJS.AES.decrypt(
+              datamessages[i].text,
+              '67b586709137805a5510ff19b9a1a5ac',
+            ).toString(CryptoJS.enc.Utf8);
+          } else {
+            datamessages[i].text = CryptoJS.AES.decrypt(
+              datamessages[i].text,
+              route.params.key,
+            ).toString(CryptoJS.enc.Utf8);
+          }
         }
         setMessages(datamessages);
       });
@@ -248,8 +274,7 @@ const ChatingScreen = () => {
         containerStyle={{
           justifyContent: 'center',
           paddingRight: scale(5),
-          height: scale(50),
-          paddingTop: scale(2),
+          paddingVertical: 5,
         }}
       />
     );
@@ -510,9 +535,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
   },
   sendingContainer: {
-    width: scale(40),
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    height: '100%',
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  containerStyle: {
+    backgroundColor: 'red',
+    height: '100%',
   },
   bottomComponentContainer: {},
   containerActionsStyle: {

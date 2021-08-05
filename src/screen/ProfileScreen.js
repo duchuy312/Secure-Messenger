@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {useEffect, useState} from 'react';
 import {
   View,
@@ -7,18 +8,35 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
 import {EditProfileIcon, SettingIcon, LogoutIcon} from '../../svg/icon';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
   const user = auth().currentUser.toJSON();
   const navigation = useNavigation();
   const [userData, setUserData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const removeItemValue = async () => {
+    try {
+      await AsyncStorage.removeItem('@MySecret');
+    } catch (exception) {
+      Alert.alert(exception);
+    }
+  };
+  const logout = async () => {
+    await removeItemValue();
+    await auth()
+      .signOut()
+      .then(() => {
+        navigation.navigate('CoverScreen');
+      });
+  };
   const getUser = async () => {
     firestore()
       .collection('USERS')
@@ -130,20 +148,7 @@ const ProfileScreen = () => {
               <Text style={styles.Button1Text}>Edit Profile</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.button1}>
-            <View style={styles.IconAndText}>
-              <SettingIcon color="black" />
-              <Text style={styles.Button1Text}>Setting</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.button1}
-            onPress={() => {
-              navigation.navigate('LoginScreen');
-              auth()
-                .signOut()
-                .then(() => console.log('User signed out!'));
-            }}>
+          <TouchableOpacity style={styles.button1} onPress={() => logout()}>
             <View style={styles.IconAndText}>
               <LogoutIcon color="black" />
               <Text style={styles.Button1Text}>Log Out</Text>

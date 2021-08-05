@@ -34,14 +34,12 @@ const EditProfileScreen = () => {
   const [place, setPlace] = useState(route.params.city);
   const [modalVisible, setModalVisible] = useState(false);
   const user = auth().currentUser.toJSON();
-  console.log(user);
   const [UrlAvatar, setUrlAvatar] = useState(route.params.userImg);
   const update = {
     displayName: name,
     photoURL: avatar,
   };
   const handleUpdate = async () => {
-    await auth().currentUser.updateProfile(update);
     await firestore()
       .collection('USERS')
       .doc(route.params.profileid)
@@ -54,9 +52,9 @@ const EditProfileScreen = () => {
         userImg: UrlAvatar,
       })
       .then(() => {
-        console.log('User Updated!');
         setModalVisible(true);
       });
+    await auth().currentUser.updateProfile(update);
   };
   useEffect(() => {
     setBirthday(date.getTime());
@@ -87,12 +85,11 @@ const EditProfileScreen = () => {
     };
     ImagePicker.launchImageLibrary(options, (response) => {
       if (response.didCancel) {
-        console.log('User cancelled photo picker');
         Alert.alert('You did not select any image');
       } else if (response.error) {
-        console.log('ImagePicker Error: ', response.error);
+        Alert.alert('ImagePicker Error: ', response.error);
       } else if (response.customButton) {
-        console.log('User tapped custom button: ', response.customButton);
+        Alert.alert('User tapped custom button: ', response.customButton);
       } else {
         // ADD THIS
         setAvatar(response.uri);
@@ -395,7 +392,6 @@ const styles = StyleSheet.create({
   GenderChoice: {
     height: scale(50),
     width: scale(120),
-    fontSize: scale(100),
   },
   TwoInforContainer: {
     flexDirection: 'row',

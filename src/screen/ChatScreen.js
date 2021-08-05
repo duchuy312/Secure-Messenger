@@ -10,31 +10,109 @@ import {
   ActivityIndicator,
   FlatList,
   ImageBackground,
+  Modal,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import CryptoJS from 'react-native-crypto-js';
-import {SearchIcon, GroupIcon} from '../../svg/icon';
+import {SearchIcon, GroupIcon, WarnIcon} from '../../svg/icon';
 import moment from 'moment';
+import {powerMod, toNumber} from '../Crypto/PowerMod';
+import md5 from 'md5';
 // ...the rest of your code
 
-const ChatScreen = () => {
-  // const [initializing, setInitializing] = useState(true);
-  // const [user, setUser] = useState();
-  // function onAuthStateChanged(user) {
-  //   setUser(user);
-  //   if (initializing) setInitializing(false);
-  // }
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const ChatScreen = () => {
   const navigation = useNavigation();
   const user = auth().currentUser.toJSON();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ChatAvatar, setChatAvatar] = useState([]);
+  const [secret, setSecret] = useState(null);
   const [search, setSearch] = useState('');
+  const [userData, setUserData] = useState([]);
+  const [modalVisible1, setModalVisible1] = useState(false);
   const [filteredDataSource, setFilteredDataSource] = useState([]);
+  const getSecret = async () => {
+    try {
+      const value = await AsyncStorage.getItem('@MySecret');
+      if (value !== null) {
+        setSecret(value);
+      } else {
+        Alert.alert('Dont have Sec');
+      }
+    } catch (err) {
+      Alert.alert(err);
+    }
+  };
+  const getUser = async () => {
+    getSecret();
+    firestore()
+      .collection('USERS')
+      .where('userid', '==', user.uid)
+      .onSnapshot((querySnapshot) => {
+        const threads = querySnapshot.docs.map((documentSnapshot) => {
+          return {
+            _id: documentSnapshot.id,
+            ...documentSnapshot.data(),
+          };
+        });
+        setUserData(threads[0]);
+        if (loading) {
+          setLoading(false);
+        }
+      });
+  };
+  const handleUpdate = async (
+    id,
+    name,
+    item,
+    membes,
+    type,
+    secure,
+    compareKey,
+  ) => {
+    if (secure === false) {
+      if (userData.fullname !== name) {
+        await firestore()
+          .collection('MESSAGE_THREADS')
+          .doc(id)
+          .update({
+            secure: true,
+          })
+          .then(() => {
+            navigation.navigate('ChatingScreen', {
+              thread: item,
+              idroom: id,
+              member: membes,
+              type: type,
+              key: compareKey,
+            });
+          });
+      } else {
+        setModalVisible1(true);
+      }
+    } else {
+      navigation.navigate('ChatingScreen', {
+        thread: item,
+        idroom: id,
+        member: membes,
+        type: type,
+        key: compareKey,
+      });
+    }
+  };
+  const handleNavi = async (id, name, item, membes, type) => {
+    navigation.navigate('ChatingScreen', {
+      thread: item,
+      idroom: id,
+      member: membes,
+      type: type,
+    });
+  };
   const searchFilterFunction = (text) => {
     // Check if searched text is not blank
     if (text) {
@@ -55,7 +133,24 @@ const ChatScreen = () => {
       setSearch(text);
     }
   };
+  const Check = async (
+    key,
+    compareKey,
+    id,
+    starter,
+    item,
+    mem,
+    type,
+    secure,
+  ) => {
+    if (key === md5(compareKey)) {
+      handleUpdate(id, starter, item, mem, type, secure, compareKey);
+    } else {
+      Alert.alert('false');
+    }
+  };
   useEffect(() => {
+    getUser();
     firestore()
       .collection('MESSAGE_THREADS')
       .where('members', 'array-contains', user.uid)
@@ -68,38 +163,13 @@ const ChatScreen = () => {
             ...documentSnapshot.data(),
           };
         });
-        for (let i = 0; i < datathreads.length; i++) {
-          datathreads[i].latestMessage.text = CryptoJS.AES.decrypt(
-            datathreads[i].latestMessage.text,
-            '1998',
-          ).toString(CryptoJS.enc.Utf8);
-        }
         setFilteredDataSource(datathreads);
         setThreads(datathreads);
         if (loading) {
           setLoading(false);
         }
       });
-    checkAvatar();
   }, [threads.length]);
-  function checkAvatar() {
-    var arr = [];
-    var arr1 = threads.sort(
-      (a, b) => b.latestMessage.createdAt - a.latestMessage.createdAt,
-    );
-    for (let i = 0; i < arr1.length; i++) {
-      if (arr1[i].avatar.length === 2) {
-        for (let j = 0; j < arr1[i].avatar.length; j++) {
-          if (arr1[i].avatar[j] !== user.photoURL) {
-            arr[i] = arr1[i].avatar[j];
-          }
-        }
-      } else if (arr1[i].avatar.length === 1) {
-        arr[i] = arr1[i].avatar[0];
-      }
-    }
-    setChatAvatar(arr);
-  }
   if (loading) {
     return <ActivityIndicator size="large" color="#555" />;
   }
@@ -126,63 +196,97 @@ const ChatScreen = () => {
         renderItem={({item, index}) => (
           <TouchableOpacity
             style={styles.rowTouch}
-            onPress={() =>
-              navigation.navigate('ChatingScreen', {
-                thread: item,
-                idroom: item._id,
-                member: item.members,
-                type: item.type,
-              })
-            }>
+            onPress={() => {
+              item.type === 'group'
+                ? handleNavi(
+                    item._id,
+                    item.starter,
+                    item,
+                    item.members,
+                    item.type,
+                    item.secure,
+                  )
+                : userData.email === item.starterMail
+                ? Check(
+                    item.key,
+                    md5(powerMod(item.publickey.friendKey, secret, 65537)),
+                    item._id,
+                    item.starter,
+                    item,
+                    item.members,
+                    item.type,
+                    item.secure,
+                  )
+                : Check(
+                    item.key,
+                    md5(powerMod(item.publickey.starterKey, secret, 65537)),
+                    item._id,
+                    item.starter,
+                    item,
+                    item.members,
+                    item.type,
+                    item.secure,
+                  );
+            }}>
             <View style={styles.row}>
               <View style={styles.AvatarUserContainer}>
                 <View style={styles.circle}>
-                  <ImageBackground
-                    style={styles.AvatarUser}
-                    source={{
-                      uri: ChatAvatar[index],
-                    }}>
-                    {item.type === 'group' ? (
+                  {item.type === 'group' ? (
+                    <ImageBackground
+                      style={styles.AvatarUser}
+                      source={{
+                        uri: item.avatar[0],
+                      }}>
                       <View style={styles.GroupIconPlace}>
                         <GroupIcon />
                       </View>
-                    ) : null}
-                  </ImageBackground>
+                    </ImageBackground>
+                  ) : (
+                    <ImageBackground
+                      style={styles.AvatarUser}
+                      source={{
+                        uri:
+                          userData.email === item.starterMail
+                            ? item.avatar.friendAva
+                            : item.avatar.starterAva,
+                      }}
+                    />
+                  )}
                 </View>
               </View>
               <View style={styles.content}>
                 <View style={styles.header}>
-                  {item.name !== user.displayName ? (
+                  {item.name !== userData.fullname ? (
                     <Text style={styles.nameText}>{item.name}</Text>
                   ) : (
                     <Text style={styles.nameText}>{item.starter}</Text>
                   )}
                 </View>
                 {item.type === 'individual' ? (
-                  item.latestMessage.sender === user.displayName ? (
+                  item.latestMessage.sender === userData.fullname ? (
                     <Text numberOfLines={1} style={styles.contentText}>
-                      {'You: ' + item.latestMessage.text.slice(0, 90)}
+                      {item.secure
+                        ? 'You: You have sent a message'
+                        : 'You started a chat'}
                     </Text>
                   ) : (
                     <Text numberOfLines={1} style={styles.contentText}>
-                      {item.latestMessage.text.slice(0, 90)}
+                      {item.latestMessage.sender + ' have sent a message'}
                     </Text>
                   )
                 ) : item.latestMessage.type !== '' ? (
-                  item.latestMessage.sender === user.displayName ? (
+                  item.latestMessage.sender === userData.fullname ? (
                     <Text numberOfLines={1} style={styles.contentText}>
-                      {'You: ' + item.latestMessage.text.slice(0, 90)}
+                      {'You: You have sent a message'}
                     </Text>
                   ) : (
                     <Text numberOfLines={1} style={styles.contentText}>
-                      {item.latestMessage.sender +
-                        ': ' +
-                        item.latestMessage.text.slice(0, 90)}
+                      {item.latestMessage.sender + ': ' + 'send a messenges'}
                     </Text>
                   )
                 ) : (
                   <Text numberOfLines={1} style={styles.contentText}>
-                    {item.latestMessage.text.slice(0, 90)}
+                    {'Chat Room'}
                   </Text>
                 )}
               </View>
@@ -200,6 +304,28 @@ const ChatScreen = () => {
           </TouchableOpacity>
         )}
       />
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible1}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+        }}>
+        <TouchableOpacity
+          style={styles.smallCenteredView}
+          onPress={() => {
+            setModalVisible1(false);
+          }}>
+          <View style={styles.smallModalView}>
+            <View style={styles.modalCenter}>
+              <WarnIcon />
+              <Text style={styles.smallModalText}>
+                Bạn đã bắt đầu cuộc trò chuyện. Xin vui lòng đợi bạn bè xác nhận
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -301,5 +427,33 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginBottom: scale(8),
     paddingRight: scale(2),
+  },
+  smallCenteredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(100,100,100, 0.9)',
+  },
+  smallModalView: {
+    height: scale(300),
+    width: scale(300),
+    backgroundColor: 'white',
+    borderRadius: scale(5),
+    alignItems: 'center',
+    shadowColor: '#000',
+    elevation: scale(5),
+    justifyContent: 'center',
+    padding: scale(8),
+  },
+  smallModalText: {
+    color: 'black',
+    fontSize: scale(15),
+    textAlign: 'center',
+    marginTop: scale(10),
+  },
+  modalCenter: {
+    justifyContent: 'space-between',
+    height: scale(200),
+    alignItems: 'center',
   },
 });

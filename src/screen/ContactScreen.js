@@ -9,6 +9,7 @@ import {
   FlatList,
   ActivityIndicator,
   TextInput,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {scale} from 'react-native-size-matters';
@@ -16,12 +17,17 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import CryptoJS from 'react-native-crypto-js';
 import {SearchIcon} from '../../svg/icon';
+import md5 from 'md5';
+import {powerMod} from '../Crypto/PowerMod';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ContactScreen = () => {
   const navigation = useNavigation();
   const user = auth().currentUser.toJSON();
   const [threads, setThreads] = useState([]);
+  const [secret, setSecret] = useState(null);
   const [UserList, setUserList] = useState([]);
+  const [UserAuth, setUserAuth] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filteredDataSource, setFilteredDataSource] = useState([]);
@@ -47,35 +53,45 @@ const ContactScreen = () => {
       setSearch(text);
     }
   };
-  function createChat(friend, id, img) {
+  const getSecret = async () => {
+    try {
+      const value = await AsyncStorage.getItem('@MySecret');
+      if (value !== null) {
+        setSecret(value);
+      } else {
+        Alert.alert('Dont have Sec');
+      }
+    } catch (err) {
+      Alert.alert(err);
+    }
+  };
+  function createChat(friend, id, img, pubCreate, keyCreate) {
     firestore()
       .collection('MESSAGE_THREADS')
       .add({
-        starter: user.displayName,
+        starterMail: UserAuth[0].email,
+        starter: UserAuth[0].fullname,
         name: friend,
         latestMessage: {
-          text: CryptoJS.AES.encrypt(
-            `${user.displayName} started a chat`,
-            '1998',
-          ).toString(),
+          text: `${UserAuth[0].fullname} started a chat`,
           createdAt: new Date().getTime(),
-          sender: '',
+          sender: UserAuth[0].fullname,
           type: '',
         },
         members: [user.uid, id],
-        avatar: [user.photoURL, img],
+        avatar: {starterAva: UserAuth[0].userImg, friendAva: img},
         chatImg: img,
         type: 'individual',
+        secure: false,
+        key: md5(keyCreate),
+        publickey: {friendKey: pubCreate, starterKey: UserAuth[0].publickey},
       })
       .then((docRef) => {
         docRef.collection('MESSAGES').add({
-          text: CryptoJS.AES.encrypt(
-            `${user.displayName} started a chat`,
-            '1998',
-          ).toString(),
+          text: `${UserAuth[0].fullname} started a chat`,
           createdAt: new Date().getTime(),
           system: true,
-          sender: '',
+          sender: UserAuth[0].fullname,
           type: '',
         });
         navigation.navigate('Chats', {id: user.uid});
@@ -116,14 +132,31 @@ const ContactScreen = () => {
           setLoading(false);
         }
       });
+    firestore()
+      .collection('USERS')
+      .where('userid', '==', user.uid)
+      .onSnapshot((querySnapshot) => {
+        const UserThreads = querySnapshot.docs.map((documentSnapshot) => {
+          return {
+            owner: user.uid,
+            _id: documentSnapshot.id,
+            ...documentSnapshot.data(),
+          };
+        });
+        setUserAuth(UserThreads);
+        if (loading) {
+          setLoading(false);
+        }
+      });
   };
   useEffect(() => {
     getRoom();
+    getSecret();
   }, []);
-  const checkRoom = (name, userid, chatImg) => {
+  const checkRoom = (name, userid, chatImg, pubkey, key) => {
     let count = 0;
     if (threads.length === 0) {
-      createChat(name, userid, chatImg);
+      createChat(name, userid, chatImg, pubkey, key);
     } else {
       for (let i = 0; i < threads.length; i++) {
         if (
@@ -137,13 +170,14 @@ const ContactScreen = () => {
             idroom: threads[i]._id,
             member: threads[i].members,
             type: threads[i].type,
+            key: key,
           });
           break;
         } else {
           count = count + 1;
         }
       }
-      count !== 0 ? createChat(name, userid, chatImg) : null;
+      count !== 0 ? createChat(name, userid, chatImg, pubkey, key) : null;
     }
   };
   if (loading) {
@@ -170,7 +204,15 @@ const ContactScreen = () => {
         renderItem={({item}) => (
           <TouchableOpacity
             style={styles.rowTouch}
-            onPress={() => checkRoom(item.fullname, item.userid, item.userImg)}>
+            onPress={() => {
+              checkRoom(
+                item.fullname,
+                item.userid,
+                item.userImg,
+                item.publickey,
+                md5(powerMod(item.publickey, secret, 65537)),
+              );
+            }}>
             <View style={styles.row}>
               <View style={styles.AvatarUserContainer}>
                 <View style={styles.circle}>
